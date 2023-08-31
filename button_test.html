@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="robots" content="noindex" />
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="theme-color" content="#ff4f1f" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" href="./favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Genesys CSS https://spark.genesys.com/ -->
+    <link href="https://dhqbrvplips7x.cloudfront.net/common-ui-docs/genesys-webcomponents/3.8.1-178/genesys-webcomponents/genesys-webcomponents.css" rel="stylesheet" />
+    <script type="module" src="https://dhqbrvplips7x.cloudfront.net/common-ui-docs/genesys-webcomponents/3.8.1-178/genesys-webcomponents/genesys-webcomponents.esm.js"></script>
+    <!-- Genesys SDK info https://developer.genesys.cloud/ -->
+    <script src="https://sdk-cdn.mypurecloud.com/javascript/latest/purecloud-platform-client-v2.min.js"></script>
+    <title>VicRoads Service Centre QMS</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        font-size: 18px;
+        margin: 0;
+        padding: 0;
+      }
+      label {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', 'sans-serif';
+      }
+      .form-container {
+        display: none;
+      }
+      input {
+        width: 100%;
+        padding: 12px 20px;
+        margin: 8px 0px;
+        display: inline-block;
+        border: 1px solid rgb(204, 204, 204);
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      select {
+        width: 100%;
+        padding: 12px 20px;
+        margin: 8px 0px;
+        display: inline-block;
+        border: 1px solid rgb(204, 204, 204);
+        border-radius: 4px;
+        box-sizing: border-box;
+      }
+      button {
+        background-color: #4caf50;
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 18px;
+        margin: 5px 10px;
+        cursor: pointer;
+        border-radius: 5px;
+      }
+    </style>
+  </head>
+  <body onload="start()">
+    <script>
+      'use strict'; //Enables strict mode is JavaScript
+      let url = new URL(document.location.href);
+      let gc_region = url.searchParams.get('gc_region');
+      let gc_clientId = url.searchParams.get('gc_clientId');
+      let gc_redirectUrl = url.searchParams.get('gc_redirectUrl');
+
+      //Getting and setting the GC details from dynamic URL and session storage
+      gc_region ? sessionStorage.setItem('gc_region', gc_region) : (gc_region = sessionStorage.getItem('gc_region'));
+      gc_clientId ? sessionStorage.setItem('gc_clientId', gc_clientId) : (gc_clientId = sessionStorage.getItem('gc_clientId'));
+      gc_redirectUrl ? sessionStorage.setItem('gc_redirectUrl', gc_redirectUrl) : (gc_redirectUrl = sessionStorage.getItem('gc_redirectUrl'));
+
+      let platformClient = require('platformClient');
+      const client = platformClient.ApiClient.instance;
+      const uapi = new platformClient.UsersApi();
+      const tapi = new platformClient.TaskManagementApi();
+      const capi = new platformClient.ConversationsApi();
+      const aapi = new platformClient.ArchitectApi()
+
+      async function start() {
+        try {
+          client.setEnvironment(gc_region);
+          client.setPersistSettings(true, '_mm_');
+
+          console.log('%cLogging in to Genesys Cloud', 'color: green');
+          await client.loginImplicitGrant(gc_clientId, gc_redirectUrl, {});
+
+          //GET Current UserId
+          let user = await uapi.getUsersMe({});
+          console.log(user);
+
+          //Enter in starting code.
+        } catch (err) {
+          console.log('Error: ', err);
+        }
+      } //End of start() function
+      async function createTask() {
+        try {
+          //check permissions
+          Notification.requestPermission().then(function (permission) {
+            // If the user accepts, let's create a notification
+            if (permission === 'granted') {
+              console.log('notification permission granted');
+            }
+          });
+          let unix = Date.now();
+          let ticket = Math.floor(Math.random() * 1000 + 1);
+          let task = await tapi.postTaskmanagementWorkitems({
+            name: 'Ticket# - ' + ticket,
+            description: 'QMS',
+            priority: 0,
+            workbinId: '19a6d392-e0ad-43cb-a1b1-067365bed638',
+            autoStatusTransition: true,
+            typeId: '785ebf39-3589-40c9-843f-0d90fce3f945',
+            customFields: {
+              customername_text: document.getElementById('customername_text').value,
+              servicetype_enum: document.getElementById('servicetype_enum').value,
+              ticketnumber_identifier: ticket.toString(),
+            },
+          });
+          console.log('**** Task created:', task); // Log the task object
+
+          var notification = new Notification('Task Created', {
+            tag: 'genesys',
+            body: 'Created: Gsummit - ' + unix,
+            icon: 'https://dhqbrvplips7x.cloudfront.net/contact-center/5000-5000/img/favicon.ico',
+          });
+          window.alert();
+        } catch (err) {
+          var notification = new Notification('Task Error', {
+            tag: 'genesys',
+            body: 'There was an error: ' + err.message,
+            icon: 'https://dhqbrvplips7x.cloudfront.net/contact-center/5000-5000/img/favicon.ico',
+          });
+          console.error(err);
+        }
+      }
+
+      async function getTestTask() {
+        try {
+          //check permissions
+          Notification.requestPermission().then(function (permission) {
+            // If the user accepts, let's create a notification
+            if (permission === 'granted') {
+              console.log('notification permission granted');
+            }
+          });
+
+          let workItem = await tapi.postTaskmanagementWorkitemsQuery({
+            filters: [
+              {
+                name: 'typeId',
+                type: 'String',
+                operator: 'EQ',
+                values: ['b7e9d38c-f1af-4889-867c-0abd327f2ac5'],
+              },
+              { values: [document.getElementById('testreference_text').value], name: 'customFields.testreference_text.value', type: 'String', operator: 'EQ' },
+            ],
+            attributes: ['id'],
+          });
+          console.log(workItem.entities[0].id);
+
+          let chatWork = await capi.postConversationsChats({
+            attributes: {
+              workItemId: workItem.entities[0].id,
+              ticketNumber: document.getElementById('testreference_text').value,
+              startPage: 'Counter',
+              agentSupport: 'learner-permit-test----d9b52428-5da3-41c1-b33c-7dccb84ce7e2',
+            },
+            queueId: 'fe47cdad-bca3-4a0a-9ce9-b69ed6e37447',
+            provider: 'QMS Test',
+            customerName: document.getElementById('customername2_text').value,
+          });
+          console.log(chatWork);
+
+          let counterdb = await aapi.getFlowsDatatableRows('b8f93068-c528-492c-94b0-51c1dc764980',{ showbrief: false});
+          console.log(counterdb);
+
+
+        } catch (err) {
+          var notification = new Notification('Task Error', {
+            tag: 'genesys',
+            body: 'There was an error: ' + err.message,
+            icon: 'https://dhqbrvplips7x.cloudfront.net/contact-center/5000-5000/img/favicon.ico',
+          });
+          console.error(err);
+        }
+      }
+    </script>
+
+    <script>
+      let visibleFormContainerId = null;
+
+      function showForm(formId) {
+        const formContainers = document.getElementsByClassName('form-container');
+        for (let i = 0; i < formContainers.length; i++) {
+          formContainers[i].style.display = 'none';
+        }
+
+        if (visibleFormContainerId === formId) {
+          visibleFormContainerId = null;
+        } else {
+          const selectedFormContainer = document.getElementById(formId + 'Container');
+          if (selectedFormContainer) {
+            selectedFormContainer.style.display = 'block';
+            visibleFormContainerId = formId;
+          }
+        }
+      }
+    </script>
+
+    <img src="vicRoadsSC.png" alt="Header Image" style="max-width: 100%" />
+
+    <div style="align-self: flex-start">
+      <button onclick="showForm('form1')">General Enquiry</button>
+      <button onclick="showForm('form2')">Test - Check In</button>
+    </div>
+
+    <div id="form1Container" class="form-container">
+      <div id="form1">
+        <h2>General Enquiry</h2>
+        <div style="padding: 25px">
+          <label>Enquiry Type</label>
+          <select id="servicetype_enum">
+            <option value="st01">Licence</option>
+            <option value="st02">Registration</option>
+            <option value="st03">Other</option>
+          </select>
+          <label>Your Name</label>
+          <input id="customername_text" placeholder="Your name.." />
+          <button onclick="createTask()" style="width: 100%; background-color: rgb(64, 180, 17); color: white; padding: 14px; margin: 20px 0px 0px; border: none; border-radius: 4px; cursor: pointer">
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="form2Container" class="form-container">
+      <div id="form2">
+        <h2>Test Check In</h2>
+        <div style="padding: 25px">
+          <label>Your Name</label>
+          <input id="customername2_text" placeholder="Your name.." />
+          <label>Test Reference Number</label>
+          <input id="testreference_text" placeholder="Your reference #.." />
+          <button onclick="getTestTask()" style="width: 100%; background-color: rgb(64, 180, 17); color: white; padding: 14px; margin: 20px 0px 0px; border: none; border-radius: 4px; cursor: pointer">
+            Submit
+          </button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

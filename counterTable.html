@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="robots" content="noindex" />
+        <meta charset="utf-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="theme-color" content="#ff4f1f" />
+        <link rel="manifest" href="./manifest.json" />
+        <link rel="icon" href="./favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <!-- Genesys CSS https://spark.genesys.com/ -->
+        <link href="https://dhqbrvplips7x.cloudfront.net/common-ui-docs/genesys-webcomponents/3.8.1-178/genesys-webcomponents/genesys-webcomponents.css" rel="stylesheet" />
+        <script type="module" src="https://dhqbrvplips7x.cloudfront.net/common-ui-docs/genesys-webcomponents/3.8.1-178/genesys-webcomponents/genesys-webcomponents.esm.js"></script>
+        <!-- Genesys SDK info https://developer.genesys.cloud/ -->
+        <script src="https://sdk-cdn.mypurecloud.com/javascript/latest/purecloud-platform-client-v2.min.js"></script>
+        <title>VicRoads Service Centre QMS</title>
+        <style>
+                table {
+                    border-collapse: collapse;
+                    width: 50%;
+                }
+
+                th, td {
+                    text-align: left;
+                    padding: 8px;
+                }
+
+                th {
+                    background-color: #f2f2f2;
+                }
+
+                tr:nth-child(even) {
+                    background-color: #f2f2f2;
+                }
+
+                /* Your existing label and form styles */
+
+                /* Add the provided button style */
+                button {
+                    background-color: #4CAF50;
+                    border: none;
+                    color: white;
+                    padding: 10px 20px;
+                    text-align: center;
+                    text-decoration: none;
+                    display: inline-block;
+                    font-size: 18px;
+                    margin: 5px 10px;
+                    cursor: pointer;
+                    border-radius: 5px;
+                }
+
+                @keyframes flash {
+                    0%, 100% { background-color: inherit; }
+                    50% { background-color: yellow; }
+                    }
+
+                    /* Apply the animation to the ticketNumberCell class */
+                    .flashing {
+                    animation: flash 1s infinite;
+    }
+
+
+          body {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            font-size: 18px;
+            margin: 0;
+            padding: 0;
+          }
+          label {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', 'sans-serif';
+          }
+          .form-container {
+            display: none;
+          }
+          input {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0px;
+            display: inline-block;
+            border: 1px solid rgb(204, 204, 204);
+            border-radius: 4px;
+            box-sizing: border-box;
+          }
+          select {
+            width: 100%;
+            padding: 12px 20px;
+            margin: 8px 0px;
+            display: inline-block;
+            border: 1px solid rgb(204, 204, 204);
+            border-radius: 4px;
+            box-sizing: border-box;
+          }
+          button {
+            background-color: #4caf50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 18px;
+            margin: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+          }
+        </style>
+      </head>
+    
+<body onload="start()">
+
+<table>
+  <thead>
+    <tr>
+        <th>Counter</th>
+        <th>Ticket Number</th>
+    </tr>
+  </thead>
+  <tbody id="table-body">
+  </tbody>
+</table>
+
+<script>
+      'use strict'; //Enables strict mode is JavaScript
+      let url = new URL(document.location.href);
+      let gc_region = url.searchParams.get('gc_region');
+      let gc_clientId = url.searchParams.get('gc_clientId');
+      let gc_redirectUrl = url.searchParams.get('gc_redirectUrl');
+      let previousTicketNumber = '';
+
+      //Getting and setting the GC details from dynamic URL and session storage
+      gc_region ? sessionStorage.setItem('gc_region', gc_region) : (gc_region = sessionStorage.getItem('gc_region'));
+      gc_clientId ? sessionStorage.setItem('gc_clientId', gc_clientId) : (gc_clientId = sessionStorage.getItem('gc_clientId'));
+      gc_redirectUrl ? sessionStorage.setItem('gc_redirectUrl', gc_redirectUrl) : (gc_redirectUrl = sessionStorage.getItem('gc_redirectUrl'));
+
+      let platformClient = require('platformClient');
+      const client = platformClient.ApiClient.instance;
+      const uapi = new platformClient.UsersApi();
+      const aapi = new platformClient.ArchitectApi()
+
+      async function start() {
+        try {
+          client.setEnvironment(gc_region);
+          client.setPersistSettings(true, '_mm_');
+
+          console.log('%cLogging in to Genesys Cloud', 'color: green');
+          await client.loginImplicitGrant(gc_clientId, gc_redirectUrl, {});
+
+          //GET Current UserId
+          let user = await uapi.getUsersMe({});
+          console.log(user);
+
+          //Enter in starting code.
+        } catch (err) {
+          console.log('Error: ', err);
+        }
+        try {
+          //check permissions
+          Notification.requestPermission().then(function (permission) {
+            // If the user accepts, let's create a notification
+            if (permission === 'granted') {
+              console.log('notification permission granted');
+            }
+          });
+
+          let data = await aapi.getFlowsDatatableRows('b8f93068-c528-492c-94b0-51c1dc764980', { showbrief: false });
+
+        const tableBody = document.getElementById("table-body");
+        tableBody.innerHTML = '';
+        data.entities.forEach(entry => {  // Make sure you access the correct property of the data object
+        const row = document.createElement("tr");
+        const ticketNumberCell = document.createElement("td");
+        const userIdCell = document.createElement("td");
+        const keyCell = document.createElement("td");
+
+        ticketNumberCell.textContent = entry["Ticket Number"];
+        // userIdCell.textContent = entry["userId"];  // Make sure the property names match the response object
+        keyCell.textContent = entry["key"];
+
+        row.appendChild(keyCell);
+        row.appendChild(ticketNumberCell);
+        // row.appendChild(userIdCell);
+        
+
+        tableBody.appendChild(row);
+        });
+
+
+        } catch (err) {
+          var notification = new Notification('Task Error', {
+            tag: 'genesys',
+            body: 'There was an error: ' + err.message,
+            icon: 'https://dhqbrvplips7x.cloudfront.net/contact-center/5000-5000/img/favicon.ico',
+          });
+          console.error(err);
+        }
+        const tableBody = document.getElementById("table-body");
+        
+        data.forEach(entry => {
+            const row = document.createElement("tr");
+            const ticketNumberCell = document.createElement("td");
+            const keyCell = document.createElement("td");
+
+            ticketNumberCell.textContent = entry["Ticket Number"];
+            userIdCell.textContent = entry["userId"];
+            keyCell.textContent = entry["key"];
+                      // Add flashing effect if the ticket number changes
+          if (previousTicketNumber !== entry["Ticket Number"]) {
+            ticketNumberCell.classList.add('flashing');
+            setTimeout(() => {
+              ticketNumberCell.classList.remove('flashing');
+            }, 10000); // Remove flashing after 10 seconds
+          }
+
+          previousTicketNumber = entry["Ticket Number"];
+
+            row.appendChild(ticketNumberCell);
+            row.appendChild(keyCell);
+
+            tableBody.appendChild(row);
+        })
+    }
+
+
+
+    start();
+    setInterval(start, 5000);
+</script>
+
+</body>
+</html>

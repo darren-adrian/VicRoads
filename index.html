@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+<!-- Created as an example by https://github.com/mcphee11 Version 2.0 -->
+<html>
+  <head>
+    <meta name="robots" content="noindex" />
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Task Routing</title>
+    <meta name="theme-color" content="#ff4f1f" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" href="./favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Genesys CSS https://spark.genesys.com/ -->
+    <link href="https://dhqbrvplips7x.cloudfront.net/common-ui-docs/genesys-webcomponents/3.8.1-178/genesys-webcomponents/genesys-webcomponents.css" rel="stylesheet" />
+    <script type="module" src="https://dhqbrvplips7x.cloudfront.net/common-ui-docs/genesys-webcomponents/3.8.1-178/genesys-webcomponents/genesys-webcomponents.esm.js"></script>
+    <!-- Genesys SDK info https://developer.genesys.cloud/ -->
+    <script src="https://sdk-cdn.mypurecloud.com/javascript/latest/purecloud-platform-client-v2.min.js"></script>
+  </head>
+  <style>
+    label {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', 'sans-serif';
+    }
+    input {
+      width: 100%;
+      padding: 12px 20px;
+      margin: 8px 0px;
+      display: inline-block;
+      border: 1px solid rgb(204, 204, 204);
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    select {
+      width: 100%;
+      padding: 12px 20px;
+      margin: 8px 0px;
+      display: inline-block;
+      border: 1px solid rgb(204, 204, 204);
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .container {
+      position: absolute;
+    }
+  </style>
+  <body onload="start()">
+    <script>
+      'use strict' //Enables strict mode is JavaScript
+      let url = new URL(document.location.href)
+      let gc_region = url.searchParams.get('gc_region')
+      let gc_clientId = url.searchParams.get('gc_clientId')
+      let gc_redirectUrl = url.searchParams.get('gc_redirectUrl')
+
+      //Getting and setting the GC details from dynamic URL and session storage
+      gc_region ? sessionStorage.setItem('gc_region', gc_region) : (gc_region = sessionStorage.getItem('gc_region'))
+      gc_clientId ? sessionStorage.setItem('gc_clientId', gc_clientId) : (gc_clientId = sessionStorage.getItem('gc_clientId'))
+      gc_redirectUrl ? sessionStorage.setItem('gc_redirectUrl', gc_redirectUrl) : (gc_redirectUrl = sessionStorage.getItem('gc_redirectUrl'))
+
+      let platformClient = require('platformClient')
+      const client = platformClient.ApiClient.instance
+      const uapi = new platformClient.UsersApi()
+      const tapi = new platformClient.TaskManagementApi()
+
+      async function start() {
+        try {
+          client.setEnvironment(gc_region)
+          client.setPersistSettings(true, '_mm_')
+
+          console.log('%cLogging in to Genesys Cloud', 'color: green')
+          await client.loginImplicitGrant(gc_clientId, gc_redirectUrl, {})
+
+          //GET Current UserId
+          let user = await uapi.getUsersMe({})
+          console.log(user)
+
+          //Enter in starting code.
+        } catch (err) {
+          console.log('Error: ', err)
+        }
+      } //End of start() function
+
+      async function createTask() {
+        try {
+          //check permissions
+          Notification.requestPermission().then(function (permission) {
+            // If the user accepts, let's create a notification
+            if (permission === 'granted') {
+              console.log('notification permission granted')
+            }
+          })
+          let unix = Date.now()
+          let ticket = Math.floor((Math.random() * 100000) + 10000);
+          let task = await tapi.postTaskmanagementWorkitems({
+            name: 'Gsummit - ' + unix,
+            description: 'EV Rebate',
+            priority: 0,
+            workbinId: '9f0bb8a2-1a9c-4fa4-bc93-c99a13495ee6',
+            autoStatusTransition: true,
+            typeId: 'b7e9d38c-f1af-4889-867c-0abd327f2ac5',
+            customFields: {
+              testtype_enum: document.getElementById('testtype_enum').value,
+              first_name_text: document.getElementById('first_name_text').value,
+              last_name_text: document.getElementById('last_name_text').value,
+              email_address_text: document.getElementById('email_address_text').value,
+              mobile_phone_text: document.getElementById('mobile_phone_text').value,
+              test_date_text: document.getElementById('test_date_text').value,
+              testreference_text: ticket.toString(),
+            },
+          })
+          var notification = new Notification('Test Booked', {
+            tag: 'genesys',
+            body: 'Your test booking reference number is - ' + ticket.toString(),
+            icon: 'https://dhqbrvplips7x.cloudfront.net/contact-center/5000-5000/img/favicon.ico',
+          })
+          window.alert()
+        } catch (err) {
+          var notification = new Notification('Task Error', {
+            tag: 'genesys',
+            body: 'There was an error: ' + err.message,
+            icon: 'https://dhqbrvplips7x.cloudfront.net/contact-center/5000-5000/img/favicon.ico',
+          })
+          console.error(err)
+        }
+      }
+    </script>
+
+    <div class="container" id="container">
+      <div style="padding: 25px">
+        <img src="./vicRoads.jpeg" width="50%" />
+        <label>Test Type</label>
+        <select id="testtype_enum">
+          <option value="learners_permit">Learners Permit</option>
+          <option value="probationary_licence">Probationary Licence</option>
+        </select>
+        <label>First Name</label>
+        <input id="first_name_text" placeholder="Your first name.." />
+        <label>Last Name</label>
+        <input id="last_name_text" placeholder="Your last name.." />
+        <label>Email Address</label>
+        <input id="email_address_text" placeholder="Your email address.." />
+        <label>Mobile Phone</label>
+        <input id="mobile_phone_text" placeholder="Your Mobile Phone number.." />
+        <label>Test Date</label>
+        <input id="test_date_text" type="date" placeholder="" />
+        <button onclick="createTask()" style="width: 100%; background-color: rgb(255, 79, 31); color: white; padding: 14px; margin: 20px 0px 0px; border: none; border-radius: 4px; cursor: pointer">
+          Submit
+        </button>
+      </div>
+    </div>
+  </body>
+</html>

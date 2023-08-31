@@ -1,0 +1,154 @@
+
+
+<!DOCTYPE html>
+<!-- Created as an example by https://github.com/mcphee11 Version 2.0 -->
+<html>
+  <head>
+    <meta name="robots" content="noindex" />
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>Task Routing</title>
+    <meta name="theme-color" content="#ff4f1f" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="icon" href="./favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Genesys CSS https://spark.genesys.com/ -->
+    <link href="https://dhqbrvplips7x.cloudfront.net/common-ui-docs/genesys-webcomponents/3.8.1-178/genesys-webcomponents/genesys-webcomponents.css" rel="stylesheet" />
+    <script type="module" src="https://dhqbrvplips7x.cloudfront.net/common-ui-docs/genesys-webcomponents/3.8.1-178/genesys-webcomponents/genesys-webcomponents.esm.js"></script>
+    <!-- Genesys SDK info https://developer.genesys.cloud/ -->
+    <script src="https://sdk-cdn.mypurecloud.com/javascript/latest/purecloud-platform-client-v2.min.js"></script>
+  </head>
+  <style>
+    label {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen-Sans, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', 'sans-serif';
+    }
+    input {
+      width: 100%;
+      padding: 12px 20px;
+      margin: 8px 0px;
+      display: inline-block;
+      border: 1px solid rgb(204, 204, 204);
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    select {
+      width: 100%;
+      padding: 12px 20px;
+      margin: 8px 0px;
+      display: inline-block;
+      border: 1px solid rgb(204, 204, 204);
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    .container {
+      position: absolute;
+    }
+  </style>
+  <body onload="start()">
+    <script>
+      'use strict' //Enables strict mode is JavaScript
+      let url = new URL(document.location.href)
+      let gc_region = url.searchParams.get('gc_region')
+      let gc_clientId = url.searchParams.get('gc_clientId')
+      let gc_redirectUrl = url.searchParams.get('gc_redirectUrl')
+
+      //Getting and setting the GC details from dynamic URL and session storage
+      gc_region ? sessionStorage.setItem('gc_region', gc_region) : (gc_region = sessionStorage.getItem('gc_region'))
+      gc_clientId ? sessionStorage.setItem('gc_clientId', gc_clientId) : (gc_clientId = sessionStorage.getItem('gc_clientId'))
+      gc_redirectUrl ? sessionStorage.setItem('gc_redirectUrl', gc_redirectUrl) : (gc_redirectUrl = sessionStorage.getItem('gc_redirectUrl'))
+
+      let platformClient = require('platformClient')
+      const client = platformClient.ApiClient.instance
+      const uapi = new platformClient.UsersApi()
+      const tapi = new platformClient.TaskManagementApi()
+
+      async function start() {
+        try {
+          client.setEnvironment(gc_region)
+          client.setPersistSettings(true, '_mm_')
+
+          console.log('%cLogging in to Genesys Cloud', 'color: green')
+          await client.loginImplicitGrant(gc_clientId, gc_redirectUrl, {})
+
+          //GET Current UserId
+          let user = await uapi.getUsersMe({})
+          console.log(user)
+
+          //Enter in starting code.
+        } catch (err) {
+          console.log('Error: ', err)
+        }
+      } //End of start() function
+
+      async function createTask() {
+        try {
+          //check permissions
+          Notification.requestPermission().then(function (permission) {
+            // If the user accepts, let's create a notification
+            if (permission === 'granted') {
+              console.log('notification permission granted')
+            }
+          })
+          let unix = Date.now()
+          let ticket = Math.floor((Math.random() * 1000) + 1);
+          let task = await tapi.postTaskmanagementWorkitems({
+            name: 'Ticket# - ' + ticket,
+            description: 'QMS',
+            priority: 0,
+            workbinId: '19a6d392-e0ad-43cb-a1b1-067365bed638',
+            autoStatusTransition: true,
+            typeId: '785ebf39-3589-40c9-843f-0d90fce3f945',
+            customFields: {
+              customername_text: document.getElementById('customername_text').value,
+              servicetype_enum: document.getElementById('servicetype_enum').value,
+              ticketnumber_identifier: ticket.toString(),
+            },
+
+          })
+          var notification = new Notification('Task Created', {
+            tag: 'genesys',
+            body: 'Created: Gsummit - ' + unix,
+            icon: 'https://dhqbrvplips7x.cloudfront.net/contact-center/5000-5000/img/favicon.ico',
+          })
+          window.alert()
+        } catch (err) {
+          var notification = new Notification('Task Error', {
+            tag: 'genesys',
+            body: 'There was an error: ' + err.message,
+            icon: 'https://dhqbrvplips7x.cloudfront.net/contact-center/5000-5000/img/favicon.ico',
+          })
+          console.error(err)
+        }
+      }
+    </script>
+
+<button onclick="showForm('form1')">General Enquiry</button>
+<button onclick="showForm('form2')">Check in for a Test</button>
+
+<div id="form1Container" class="form-container">
+    <form id="form1">
+        <h2>Form 1</h2>
+        <label for="input1">Input 1:</label>
+        <input type="text" id="input1" name="input1">
+        <button type="submit">Submit Form 1</button>
+    </form>
+</div>
+
+    <div class="container" id="container">
+      <div style="padding: 25px">
+        <img src="./vicRoadsSC.png" width="100%" />
+        <label>Service Type Type</label>
+        <select id="servicetype_enum">
+          <option value="st01">Service Type 01</option>
+          <option value="st02">Service Type 02</option>
+          <option value="st03">Service Type 03</option>
+        </select>
+        <label>Your Name</label>
+        <input id="customername_text" placeholder="Your name.." />
+        <button onclick="createTask()" style="width: 100%; background-color: rgb(255, 79, 31); color: white; padding: 14px; margin: 20px 0px 0px; border: none; border-radius: 4px; cursor: pointer">
+          Submit
+        </button>
+      </div>
+    </div>
+  </body>
+</html>
